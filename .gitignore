@@ -6,3 +6,4 @@
 /pb_data/*.db-wal
 node_modules
 .idea
+**/*.zip
