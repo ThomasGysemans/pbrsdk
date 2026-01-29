@@ -1,0 +1,49 @@
+{
+    "existingCollections": {
+        "users": {
+            "fields": ["id", "name", "email", "emailVisibility", "verified", "updated", "created"]
+        },
+        "articles": {
+            "fields": ["id", "name", "price", "public", "updated", "created"]
+        }
+    },
+    "data": {
+        "users": [
+            {
+                "created": "2026-01-28 10:41:20.563Z",
+                "email": "thomas@gysemans.dev",
+                "emailVisibility": true,
+                "id": "0p0vbr35ph2zter",
+                "name": "Thomas Gysemans",
+                "updated": "2026-01-28 10:41:47.831Z",
+                "verified": true
+            }
+        ],
+        "articles": [
+            {
+                "created": "2026-01-28 16:16:51.585Z",
+                "id": "ndnws297g00z6th",
+                "name": "Good macbook",
+                "price": 5000000,
+                "public": false,
+                "updated": "2026-01-28 16:16:51.585Z"
+            },
+            {
+                "created": "2026-01-28 16:16:42.652Z",
+                "id": "hn0kpw3hwnpwwua",
+                "name": "Macbook air",
+                "price": 9999,
+                "public": true,
+                "updated": "2026-01-28 16:16:42.652Z"
+            },
+            {
+                "created": "2026-01-28 16:16:25.428Z",
+                "id": "7j4zh817t1fau3m",
+                "name": "Macbook pro",
+                "price": 10000,
+                "public": true,
+                "updated": "2026-01-28 16:16:25.428Z"
+            }
+        ]
+    }
+}

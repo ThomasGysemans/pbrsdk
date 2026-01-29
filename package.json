@@ -1,0 +1,14 @@
+{
+    "name": "pbrsdk",
+    "version": "1.0.0",
+    "description": "",
+    "main": "init-demo-pb.js",
+    "type": "module",
+    "scripts": {
+        "start": "node init-demo-pb.js"
+    },
+    "private": true,
+    "dependencies": {
+        "pocketbase": "^0.26.7"
+    }
+}

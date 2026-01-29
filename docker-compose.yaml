@@ -1,0 +1,14 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pbrsdk_example
+    environment:
+      POCKETBASE_EMAIL: "thomas@gysemans.dev"
+      POCKETBASE_PASSWORD: "thomasgysemans"
+    volumes:
+      - ./pb_data:/pb_data
+    ports:
+      - "8091:8090"
+    restart: "no"
