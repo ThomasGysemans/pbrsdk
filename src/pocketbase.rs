@@ -5,20 +5,21 @@ use serde::Deserialize;
 use crate::error::ApiError;
 
 pub struct CollectionService {
-    pub base_crud_path: &'static str,
-    pub client: Arc<Client>,
-    pub base_url: String,
+    base_crud_path: &'static str,
+    client: Arc<Client>,
+    base_url: String,
+}
+
+pub struct Collection {
+    client: Arc<Client>,
+    base_url: String,
+    collection_id_or_name: String,
 }
 
 pub struct PocketBase {
     pub collections: CollectionService,
-    pub client: Arc<Client>,
-    pub base_url: String,
-}
-
-pub struct Collection {
-    pb: PocketBase,
-    pub collection_id_or_name: String,
+    client: Arc<Client>,
+    base_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,6 +39,10 @@ pub struct ResponseError {
 }
 
 impl PocketBase {
+    pub fn base_url(&self) -> String {
+        self.base_url.clone()
+    }
+
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
         let client = Arc::new(Client::new());
         let url = base_url.into();
@@ -52,18 +57,19 @@ impl PocketBase {
         })
     }
 
-    pub fn collection(self, name_or_id: impl Into<String>) -> Collection {
+    pub fn collection(&self, name_or_id: impl Into<String>) -> Collection {
         Collection {
-            pb: self,
+            client: self.client.clone(),
+            base_url: self.base_url.clone(),
             collection_id_or_name: name_or_id.into(),
         }
     }
 }
 
 impl Collection {
-    pub async fn get_full_list<T: DeserializeOwned>(self) -> Result<Response<T>, ApiError> {
-        let url = format!("{}/api/collections/{}/records", self.pb.base_url, self.collection_id_or_name);
-        let body = self.pb.client.get(url).send().await?.text().await?;
+    pub async fn get_full_list<T: DeserializeOwned>(&self) -> Result<Response<T>, ApiError> {
+        let url = format!("{}/api/collections/{}/records", self.base_url, self.collection_id_or_name);
+        let body = self.client.get(url).send().await?.text().await?;
         let response = serde_json::from_str::<Response<T>>(&body);
         if response.is_ok() {
             Ok(response.unwrap())
@@ -75,7 +81,11 @@ impl Collection {
 }
 
 impl CollectionService {
-    pub async fn get_full_list(self) -> Result<String, ApiError> {
+    pub fn base_crud_path(&self) -> &'static str {
+        self.base_crud_path
+    }
+
+    pub async fn get_full_list(&self) -> Result<String, ApiError> {
         // TODO: requires authentication header
         let url = format!("{}{}", self.base_url, self.base_crud_path);
         let body = self.client.get(url).send().await?.text().await?;
