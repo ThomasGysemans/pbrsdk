@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use crate::error::ApiError;
@@ -31,6 +31,12 @@ pub struct Response<T> {
     pub total_pages: f64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ResponseError {
+    pub message: String,
+    pub status: u16,
+}
+
 impl PocketBase {
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
         let client = Arc::new(Client::new());
@@ -58,8 +64,13 @@ impl Collection {
     pub async fn get_full_list<T: DeserializeOwned>(self) -> Result<Response<T>, ApiError> {
         let url = format!("{}/api/collections/{}/records", self.pb.base_url, self.collection_id_or_name);
         let body = self.pb.client.get(url).send().await?.text().await?;
-        let response: Response<T> = serde_json::from_str(&body).unwrap();
-        Ok(response)
+        let response = serde_json::from_str::<Response<T>>(&body);
+        if response.is_ok() {
+            Ok(response.unwrap())
+        } else {
+            let error = serde_json::from_str::<ResponseError>(&body).unwrap();
+            Err(ApiError::Http(StatusCode::from_u16(error.status).unwrap(), error.message))
+        }
     }
 }
 
