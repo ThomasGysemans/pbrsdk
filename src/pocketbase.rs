@@ -18,7 +18,7 @@ pub struct PocketBase {
 
 pub struct Collection {
     pb: PocketBase,
-    pub name: String,
+    pub collection_id_or_name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,17 +46,17 @@ impl PocketBase {
         })
     }
 
-    pub fn collection(self, name: impl Into<String>) -> Result<Collection, ApiError> {
-        Ok(Collection {
+    pub fn collection(self, name_or_id: impl Into<String>) -> Collection {
+        Collection {
             pb: self,
-            name: name.into(),
-        })
+            collection_id_or_name: name_or_id.into(),
+        }
     }
 }
 
 impl Collection {
     pub async fn get_full_list<T: DeserializeOwned>(self) -> Result<Response<T>, ApiError> {
-        let url = format!("{}/api/collections/{}/records", self.pb.base_url, self.name);
+        let url = format!("{}/api/collections/{}/records", self.pb.base_url, self.collection_id_or_name);
         let body = self.pb.client.get(url).send().await?.text().await?;
         let response: Response<T> = serde_json::from_str(&body).unwrap();
         Ok(response)

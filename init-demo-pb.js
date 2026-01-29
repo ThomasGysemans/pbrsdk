@@ -28,6 +28,7 @@ async function main() {
             await pb.collection(collectionName).create(record);
         }
     }
+    console.log("coll", pb.collection("yoyoyo"));
     // console.log(await (await fetch("http://localhost:8091/api/collections", {
     //     headers: {
     //         "Authorization": `Bearer ${pb.authStore.token}`

@@ -12,6 +12,6 @@ struct Article {
 #[tokio::main]
 async fn main() {
     let pb = PocketBase::new("http://localhost:8091/").unwrap();
-    let result = pb.collection("Articles").unwrap().get_full_list::<Article>().await.unwrap();
+    let result = pb.collection("Articles").get_full_list::<Article>().await.unwrap();
     println!("{:#?}", result);
 }
