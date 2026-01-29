@@ -5,12 +5,12 @@ use pbrsdk_macros::base_system_fields;
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DefaultAuthRecord {
-    email: String,
-    verified: bool,
-    email_visibility: bool,
-    created: String,
-    updated: String,
-    name: String,
+    pub email: String,
+    pub verified: bool,
+    pub email_visibility: bool,
+    pub created: String,
+    pub updated: String,
+    pub name: String,
 }
 
 #[derive(Debug)]
