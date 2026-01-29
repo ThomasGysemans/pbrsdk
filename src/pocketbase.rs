@@ -2,8 +2,10 @@ use std::sync::Arc;
 use reqwest::{Client, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use crate::auth::{AuthStore, DefaultAuthRecord};
 use crate::error::ApiError;
 
+#[derive(Clone)]
 pub struct CollectionService {
     base_crud_path: &'static str,
     client: Arc<Client>,
@@ -16,8 +18,10 @@ pub struct Collection {
     collection_id_or_name: String,
 }
 
-pub struct PocketBase {
-    pub collections: CollectionService,
+pub struct PocketBase<T = DefaultAuthRecord>
+where T: DeserializeOwned {
+    auth_store: AuthStore<T>,
+    collections: CollectionService,
     client: Arc<Client>,
     base_url: String,
 }
@@ -38,9 +42,18 @@ pub struct ResponseError {
     pub status: u16,
 }
 
-impl PocketBase {
-    pub fn base_url(&self) -> String {
-        self.base_url.clone()
+impl<T> PocketBase<T>
+where T: DeserializeOwned {
+    pub fn base_url(&self) -> &String {
+        &self.base_url
+    }
+
+    pub fn collections(&self) -> &CollectionService {
+        &self.collections
+    }
+
+    pub fn auth_store(&self) -> &AuthStore<T> {
+        &self.auth_store
     }
 
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
@@ -49,6 +62,7 @@ impl PocketBase {
         Ok(Self {
             client: client.clone(),
             base_url: url.clone(),
+            auth_store: AuthStore::default(),
             collections: CollectionService {
                 base_crud_path: "/api/collections",
                 base_url: url.clone(),
@@ -63,6 +77,12 @@ impl PocketBase {
             base_url: self.base_url.clone(),
             collection_id_or_name: name_or_id.into(),
         }
+    }
+}
+
+impl PocketBase<DefaultAuthRecord> {
+    pub fn default(base_url: impl Into<String>) -> Result<Self, ApiError> {
+        PocketBase::new(base_url.into())
     }
 }
 

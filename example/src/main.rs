@@ -11,7 +11,7 @@ struct Article {
 
 #[tokio::main]
 async fn main() {
-    let pb = PocketBase::new("http://localhost:8091/").unwrap();
+    let pb = PocketBase::default("http://localhost:8091/").unwrap();
     let response = pb.collection("Articles").get_full_list::<Article>().await;
     if let Err(err) = response {
         if let ApiError::Http(_, _) = err {
