@@ -28,7 +28,7 @@ async function main() {
             await pb.collection(collectionName).create(record);
         }
     }
-    console.log("coll", pb.collection("yoyoyo"));
+    console.log(pb.authStore.token);
     // console.log(await (await fetch("http://localhost:8091/api/collections", {
     //     headers: {
     //         "Authorization": `Bearer ${pb.authStore.token}`
@@ -36,9 +36,30 @@ async function main() {
     // })).json());
 }
 
+async function test() {
+    // const res = await pb.collection("users").authWithPassword("thomas@gysemans.dev", "qwertyui");
+    // console.log("res =", res);
+    const res = await fetch("http://localhost:8091/api/collections/users/auth-with-password", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            identity: "thomas@gysemans.dev",
+            password: "qwertyui",
+        }),
+    });
+    if (!res.ok) {
+        console.log("failed", res);
+        return;
+    }
+    console.log(await res.json());
+}
+
 try {
     console.log("Working...");
-    await main();
+    await test();
+    // await main();
     console.log("Done.");
 } catch (e) {
     console.error("Failed to login as super user :");

@@ -13,7 +13,7 @@ keywords = ["pocketbase", "sdk", "pb", "rust-pocketbase"]
 categories = ["development-tools"]
 
 [dependencies]
-reqwest = "0.13.1"
+reqwest = { version = "0.13.1", features = ["json"] }
 thiserror = "2.0.18"
 serde_json = "1.0.149"
 serde = { version = "1.0.228", features = ["derive"] }
