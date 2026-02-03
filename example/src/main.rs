@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use serde::Deserialize;
 use pbrsdk::*;
 
@@ -20,14 +22,14 @@ struct CustomUserType {
 async fn main() {
     // to use a custom user type then call PocketBase::<CustomUserType>::new();
     let pb = PocketBase::default("http://localhost:8091/").unwrap();
-    let response = pb.collection("users").auth_with_password("thomas@gysemans.dev", "qwertyui").await;
+    let response = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await;
     if let Err(err) = response {
         if let ApiError::Http(_, _) = err {
             eprintln!("{}", err);
         }
     } else {
         let lock = pb.auth_store().lock();
-        let r = lock.as_ref().unwrap().record().unwrap();
-        println!("{:#?}", r);
+        println!("is valid : {:#?}", lock.as_ref().unwrap().is_valid());
+        println!("is super user : {:#?}", lock.as_ref().unwrap().is_superuser());
     }
 }

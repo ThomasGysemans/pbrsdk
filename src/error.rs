@@ -7,4 +7,7 @@ pub enum ApiError {
 
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
+
+    #[error("Invalid token")]
+    Jwt()
 }
