@@ -14,7 +14,7 @@ use crate::ApiError;
 /// The `name` property is optional since '_superusers' doesn't have it.
 /// The `verified` and `email_visibility` properties default to `false`.
 #[base_system_fields]
-#[derive(Debug, serde::Deserialize, Clone)]
+#[derive(Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DefaultAuthRecord {
     /// `email` column.

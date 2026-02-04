@@ -29,8 +29,9 @@ use syn::{parse_macro_input, Attribute, Field, Fields, ItemStruct};
 /// you can easily add those common properties using this
 /// procedural macro.
 ///
-/// Note that this macro also adds another attribute: `#[serde(rename_all = "camelCase")]`,
-/// but `#[derive(Deserialize)]` is not added automatically, and yet is important.
+/// # Note
+///
+/// This procedural macro automatically adds the attribute `#[derive(serde::Deserialize)]`
 ///
 /// # Example
 ///
@@ -39,7 +40,6 @@ use syn::{parse_macro_input, Attribute, Field, Fields, ItemStruct};
 /// use serde::*;
 ///
 /// #[base_system_fields]
-/// #[derive(Deserialize)]
 /// struct ArticleRecord {
 ///     name: String,
 ///     price: f64,
@@ -76,10 +76,12 @@ pub fn base_system_fields(_attr: TokenStream, item: TokenStream) -> TokenStream 
         ),
         syn::parse_quote!(
             /// The collection ID of the fetched record.
+            #[serde(rename = "collectionId")]
             pub collection_id: String
         ),
         syn::parse_quote!(
             /// The collection's name of the fetched record.
+            #[serde(rename = "collectionName")]
             pub collection_name: String
         ),
     ];
@@ -89,16 +91,8 @@ pub fn base_system_fields(_attr: TokenStream, item: TokenStream) -> TokenStream 
         fields.insert(0, field);
     }
 
-    // Inject #[serde(rename_all = "camelCase")] if it's not already present
-    let already_has_serde = input.attrs.iter().any(|attr| {
-        attr.path().is_ident("serde") &&
-            attr.to_token_stream().to_string().contains("rename_all")
-    });
-
-    if !already_has_serde {
-        let serde_attr: Attribute = syn::parse_quote!(#[serde(rename_all = "camelCase")]);
-        input.attrs.push(serde_attr);
-    }
+    let serde_attr: Attribute = syn::parse_quote!(#[derive(serde::Deserialize)]);
+    input.attrs.insert(0, serde_attr);
 
     TokenStream::from(quote! {
         #input
