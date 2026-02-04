@@ -70,9 +70,18 @@ pub fn base_system_fields(_attr: TokenStream, item: TokenStream) -> TokenStream 
 
     // Fields to inject
     let injected_fields: Vec<Field> = vec![
-        syn::parse_quote!(pub id: String),
-        syn::parse_quote!(pub collection_id: String),
-        syn::parse_quote!(pub collection_name: String),
+        syn::parse_quote!(
+            /// The ID of the fetched record.
+            pub id: String
+        ),
+        syn::parse_quote!(
+            /// The collection ID of the fetched record.
+            pub collection_id: String
+        ),
+        syn::parse_quote!(
+            /// The collection's name of the fetched record.
+            pub collection_name: String
+        ),
     ];
 
     // Prepend injected fields
