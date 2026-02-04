@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use reqwest::{Client, StatusCode};
+use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize};
 use crate::auth::{AuthRequest, AuthResponse, AuthStore, DefaultAuthRecord, DefaultAuthResponseRecord};
@@ -110,7 +111,17 @@ where T: DeserializeOwned + Clone {
     /// // TODO: i think it's actually limited to a batch of 200 by default. Needs to be checked.
     pub async fn get_full_list<E: DeserializeOwned>(&self) -> Result<FullListResponse<E>, ApiError> {
         let url = format!("{}/api/collections/{}/records", self.base_url, self.collection_id_or_name);
-        let body = self.client.get(&url).send().await?.text().await?;
+        let store = self.auth_store.lock();
+        let token = store.as_ref().unwrap().token.clone();
+        let mut headers: HeaderMap = HeaderMap::new();
+        if let Some(token) = token {
+            headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
+        }
+        let body = self.client
+            .get(&url)
+            .headers(headers)
+            .send().await?
+            .text().await?;
         self.handle_response_body(&body).await
     }
 
