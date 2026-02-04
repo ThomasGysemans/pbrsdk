@@ -7,7 +7,7 @@
 //!
 //! Those properties are included in most responses of PocketBase.
 
-use quote::{quote, ToTokens};
+use quote::{quote};
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, Attribute, Field, Fields, ItemStruct};
 

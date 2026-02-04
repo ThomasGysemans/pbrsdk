@@ -83,9 +83,9 @@ pub(crate) struct JwtPayload {
     token_type: String,
     #[serde(rename = "collectionId")]
     collection_id: String,
-    refreshable: bool,
-    id: String,
     exp: u64, // expiration in seconds
+    // refreshable: bool,
+    // id: String,
 }
 
 impl<T> AuthStore<T>
