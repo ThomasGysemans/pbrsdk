@@ -5,25 +5,45 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::ApiError;
 
+/// If you don't want to bother changing the default 'users' collection of PocketBase,
+/// then use this struct that already contains all the columns
+/// that both the 'users' and '_superusers' collections have.
+///
+/// # Note
+///
+/// The `name` property is optional since '_superusers' doesn't have it.
+/// The `verified` and `email_visibility` properties default to `false`.
 #[base_system_fields]
 #[derive(Debug, serde::Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DefaultAuthRecord {
+    /// `email` column.
     pub email: String,
+    /// `verified` column, defaults to `false` if the collection is `_superusers`.
     pub verified: bool,
+    /// `email_visibility` column, defaults to `false` if the collection is `_superusers`.
     pub email_visibility: bool,
+    /// `created` column as a string that is formatted according to the ISO standard of dates.
     pub created: String,
+    /// `updated` column as a string that is formatted according to the ISO standard of dates.
     pub updated: String,
+    /// `name` column. Defaults to [Option::None] if the collection is `_superusers`.
     pub name: Option<String>, // it's optional because such column doesn't exist in the default _superusers collection
 }
 
-#[derive(Debug)]
+/// The AuthStore stores the auth token and the record of the auth collection used for authentication.
+/// It also contains the name and the ID of the collection used for authentication.
+#[derive(Debug, Clone)]
 pub struct AuthStore<T>
 where T: DeserializeOwned + Clone {
-    token: Option<String>,
-    record: Option<T>,
-    collection_name: Option<String>,
-    collection_id: Option<String>,
+    /// The base64 JWT token.
+    pub token: Option<String>,
+    /// The record that matches the user's data.
+    pub record: Option<T>,
+    /// The name of the collection used for authentication.
+    pub collection_name: Option<String>,
+    /// The ID of the collection used for authentication.
+    pub collection_id: Option<String>,
 }
 
 impl<T> Default for AuthStore<T>
@@ -70,14 +90,6 @@ pub(crate) struct JwtPayload {
 
 impl<T> AuthStore<T>
 where T: DeserializeOwned + Clone {
-    pub fn token(&self) -> Option<String> {
-        self.token.clone()
-    }
-
-    pub fn record(&self) -> Option<&T> {
-        self.record.as_ref()
-    }
-
     pub(crate) fn set_token(&mut self, token: String) {
         self.token = Some(token);
     }
@@ -95,10 +107,13 @@ where T: DeserializeOwned + Clone {
         self.token.is_some() && self.record.is_some() && self.collection_id.is_some() && self.collection_name.is_some()
     }
 
+    /// Checks if the authentication token is not expired.
     pub fn is_valid(&self) -> bool {
         self.is_some() && !is_token_expired(self.token.as_ref().unwrap())
     }
 
+    /// Checks if the user is a superuser (aka an admin).
+    /// You can also just check if [self.collection_name] is equal to `"_superusers"`.
     pub fn is_superuser(&self) -> bool {
         if !self.is_some() { return false; }
         let payload = get_token_payload(self.token.as_ref().unwrap());

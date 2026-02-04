@@ -28,8 +28,8 @@ async fn main() {
             eprintln!("{}", err);
         }
     } else {
-        let lock = pb.auth_store().lock();
-        println!("is valid : {:#?}", lock.as_ref().unwrap().is_valid());
-        println!("is super user : {:#?}", lock.as_ref().unwrap().is_superuser());
+        let lock = pb.auth_store();
+        println!("is valid : {:#?}", lock.is_valid());
+        println!("is super user : {:#?}", lock.is_superuser());
     }
 }
