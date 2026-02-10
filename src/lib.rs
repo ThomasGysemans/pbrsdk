@@ -29,6 +29,7 @@
 mod pocketbase;
 mod error;
 mod auth;
+mod tests;
 
 pub use pbrsdk_macros::base_system_fields;
 pub use pocketbase::PocketBase;

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use reqwest::{Client, StatusCode};
 use reqwest::header::HeaderMap;
