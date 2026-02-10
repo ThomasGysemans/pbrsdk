@@ -33,7 +33,7 @@ where T: DeserializeOwned + Clone {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FullListResponse<T> {
+pub struct ListResponse<T> {
     pub items: Vec<T>,
     pub page: f64,
     pub per_page: f64,
@@ -45,6 +45,57 @@ pub struct FullListResponse<T> {
 pub struct ResponseError {
     pub message: String,
     pub status: u16,
+}
+
+/// The query parameters for the API route `/api/collections/NAME/records`.
+/// This route would return paginated results by default.
+#[derive(Debug, Default)]
+pub struct ListOptions {
+    /// The page number.
+    /// Starts at 1.
+    pub page: Option<u64>,
+    /// The number of items per page.
+    pub per_page: Option<u64>,
+    /// By default, the API returns the total number of items.
+    /// If the targeted collection is huge, then skipping the total
+    /// will avoid time-consuming computations.
+    pub skip_total: Option<bool>,
+    /// Filter the returned records.
+    pub filter: Option<String>,
+    /// Comma separated string of the fields to return
+    /// in the JSON response (by default returns all fields).
+    pub fields: Option<String>,
+    /// Auto expand record relations.
+    pub expand: Option<String>,
+    /// Specify the records order attribute.
+    pub sort: Option<String>,
+}
+
+impl ListOptions {
+    /// Creates a simple instance that will only care about
+    /// the page number and the amount of items per page.
+    pub fn paginated(page: u64, per_page: u64) -> Self {
+        ListOptions {
+            page: Some(page),
+            per_page: Some(per_page),
+            ..ListOptions::default()
+        }
+    }
+
+    pub(crate) fn to_url_query(&self) -> String {
+        let mut url = "?".to_string();
+        if let Some(page) = self.page { url.push_str(&format!("page={}&", page)); }
+        if let Some(per_page) = self.per_page { url.push_str(&format!("perPage={}&", per_page)); }
+        if let Some(skip_total) = self.skip_total { url.push_str(&format!("skipTotal={}&", skip_total)); }
+        if let Some(filter) = &self.filter { url.push_str(&format!("filter={}&", filter)); }
+        if let Some(fields) = &self.fields { url.push_str(&format!("fields={}&", fields)); }
+        if let Some(expand) = &self.expand { url.push_str(&format!("expand={}&", expand)); }
+        if let Some(sort) = &self.sort { url.push_str(&format!("sort={}&", sort)); }
+        if url.len() == 1 {
+            return String::new();
+        }
+        url.strip_suffix("&").unwrap().to_string()
+    }
 }
 
 impl<T> PocketBase<T>
@@ -107,16 +158,31 @@ where T: DeserializeOwned + Clone {
         }
     }
 
-    /// Gets the full list of records from the collection.
-    /// // TODO: i think it's actually limited to a batch of 200 by default. Needs to be checked.
-    pub async fn get_full_list<E: DeserializeOwned>(&self) -> Result<FullListResponse<E>, ApiError> {
-        let url = format!("{}/api/collections/{}/records", self.base_url, self.collection_id_or_name);
+    fn get_auth_headers(&self) -> HeaderMap {
         let store = self.auth_store.lock();
         let token = store.as_ref().unwrap().token.clone();
         let mut headers: HeaderMap = HeaderMap::new();
         if let Some(token) = token {
             headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
         }
+        headers
+    }
+
+    pub async fn get_list<E: DeserializeOwned>(&self, options: &ListOptions) -> Result<ListResponse<E>, ApiError> {
+        let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.to_url_query());
+        let headers = self.get_auth_headers();
+        let body = self.client
+            .get(&url)
+            .headers(headers)
+            .send().await?
+            .text().await?;
+        self.handle_response_body(&body).await
+    }
+
+    /// Gets the full list of records from the collection.
+    pub async fn get_full_list<E: DeserializeOwned>(&self) -> Result<ListResponse<E>, ApiError> {
+        let url = format!("{}/api/collections/{}/records", self.base_url, self.collection_id_or_name);
+        let headers = self.get_auth_headers();
         let body = self.client
             .get(&url)
             .headers(headers)

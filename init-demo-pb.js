@@ -28,12 +28,6 @@ async function main() {
             await pb.collection(collectionName).create(record);
         }
     }
-    console.log(pb.authStore.token);
-    // console.log(await (await fetch("http://localhost:8091/api/collections", {
-    //     headers: {
-    //         "Authorization": `Bearer ${pb.authStore.token}`
-    //     }
-    // })).json());
 }
 
 try {

@@ -23,8 +23,8 @@ async fn main() {
     // to use a custom user type then call PocketBase::<CustomUserType>::new();
     let pb = PocketBase::default("http://localhost:8091/").unwrap();
     authenticate(&pb).await;
-    let articles = fetch_articles(&pb).await;
-    println!("articles: {:#?}", articles);
+    let articles = fetch_all_articles(&pb).await;
+    let paginated_articles = fetch_first_articles(&pb).await;
 }
 
 async fn authenticate(pb: &PocketBase) {
@@ -41,11 +41,24 @@ async fn authenticate(pb: &PocketBase) {
     }
 }
 
-async fn fetch_articles(pb: &PocketBase) -> Vec<Article> {
+async fn fetch_all_articles(pb: &PocketBase) -> Vec<Article> {
     let response = pb.collection("articles").get_full_list().await;
     if let Err(err) = response {
         panic!("{}", err);
     } else {
-        response.unwrap().items
+        let res = response.unwrap();
+        println!("Articles fetched : {:#?}", res);
+        res.items
+    }
+}
+
+async fn fetch_first_articles(pb: &PocketBase) -> Vec<Article> {
+    let response = pb.collection("articles").get_list(&ListOptions::paginated(1, 1)).await;
+    if let Err(err) = response {
+        panic!("{}", err);
+    } else {
+        let res = response.unwrap();
+        println!("Articles fetched : {:#?}", res);
+        res.items
     }
 }
