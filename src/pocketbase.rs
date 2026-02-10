@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use reqwest::{Client, StatusCode};
 use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize};
+use urlencoding::encode;
 use crate::auth::{AuthRequest, AuthResponse, AuthStore, DefaultAuthRecord, DefaultAuthResponseRecord};
 use crate::error::ApiError;
 
@@ -71,6 +73,15 @@ pub struct ListOptions {
     pub sort: Option<String>,
 }
 
+/// Options to view a collection's record.
+#[derive(Debug, Default)]
+pub struct ViewOptions {
+    /// Auto expand record relations.
+    pub expand: Option<String>,
+    /// Specify the records order attribute.
+    pub sort: Option<String>,
+}
+
 impl ListOptions {
     /// Creates a simple instance that will only care about
     /// the page number and the amount of items per page.
@@ -99,10 +110,22 @@ impl ListOptions {
         if let Some(page) = self.page { url.push_str(&format!("page={}&", page)); }
         if let Some(per_page) = self.per_page { url.push_str(&format!("perPage={}&", per_page)); }
         if let Some(skip_total) = self.skip_total { url.push_str(&format!("skipTotal={}&", if skip_total { "1" } else { "0" })); }
-        if let Some(filter) = &self.filter { url.push_str(&format!("filter={}&", filter)); }
-        if let Some(fields) = &self.fields { url.push_str(&format!("fields={}&", fields)); }
-        if let Some(expand) = &self.expand { url.push_str(&format!("expand={}&", expand)); }
-        if let Some(sort) = &self.sort { url.push_str(&format!("sort={}&", sort)); }
+        if let Some(filter) = &self.filter { url.push_str(&format!("filter={}&", encode(filter).into_owned())); }
+        if let Some(fields) = &self.fields { url.push_str(&format!("fields={}&", encode(fields).into_owned())); }
+        if let Some(expand) = &self.expand { url.push_str(&format!("expand={}&", encode(expand).into_owned())); }
+        if let Some(sort) = &self.sort { url.push_str(&format!("sort={}&", encode(sort).into_owned())); }
+        if url.len() == 1 {
+            return String::new();
+        }
+        url.strip_suffix("&").unwrap().to_string()
+    }
+}
+
+impl ViewOptions {
+    pub(crate) fn to_url_query(&self) -> String {
+        let mut url = "?".to_string();
+        if let Some(expand) = &self.expand { url.push_str(&format!("expand={}&", encode(expand).into_owned())); }
+        if let Some(sort) = &self.sort { url.push_str(&format!("sort={}&", encode(sort).into_owned())); }
         if url.len() == 1 {
             return String::new();
         }
@@ -180,8 +203,22 @@ where T: DeserializeOwned + Clone {
         headers
     }
 
+    /// Fetches pages of records.
     pub async fn get_list<E: DeserializeOwned>(&self, options: &ListOptions) -> Result<ListResponse<E>, ApiError> {
         let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.to_url_query());
+        let headers = self.get_auth_headers();
+        let body = self.client
+            .get(&url)
+            .headers(headers)
+            .send().await?
+            .text().await?;
+        self.handle_response_body(&body).await
+    }
+
+    /// Fetches one record based on its ID, which must exist.
+    /// If the ID isn't found, the server will return a 404 error.
+    pub async fn get_one<E: DeserializeOwned>(&self, id: &String, options: Option<ViewOptions>) -> Result<E, ApiError> {
+        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(id), options.unwrap_or_default().to_url_query());
         let headers = self.get_auth_headers();
         let body = self.client
             .get(&url)

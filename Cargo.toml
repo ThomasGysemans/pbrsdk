@@ -20,3 +20,4 @@ serde = { version = "1.0.228", features = ["derive"] }
 pbrsdk_macros = { path = "./pbrsdk_macros" }
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
 base64 = "0.22.1"
+urlencoding = "2.1.3"
