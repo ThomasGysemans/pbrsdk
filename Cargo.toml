@@ -21,3 +21,4 @@ pbrsdk_macros = { path = "./pbrsdk_macros" }
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
 base64 = "0.22.1"
 urlencoding = "2.1.3"
+once_cell = "1.21.3"

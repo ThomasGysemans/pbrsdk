@@ -10,13 +10,13 @@ use crate::error::ApiError;
 #[derive(Clone)]
 pub struct CollectionService {
     base_crud_path: &'static str,
-    client: Arc<Client>,
+    client: Client,
     base_url: String,
 }
 
 pub struct Collection<T>
 where T: DeserializeOwned + Clone {
-    client: Arc<Client>,
+    client: Client,
     auth_store: Arc<Mutex<AuthStore<T>>>,
     base_url: String,
     collection_id_or_name: String,
@@ -28,7 +28,7 @@ pub struct PocketBase<T = DefaultAuthRecord>
 where T: DeserializeOwned + Clone {
     auth_store: Arc<Mutex<AuthStore<T>>>,
     collections: CollectionService,
-    client: Arc<Client>,
+    client: Client,
     base_url: String,
 }
 
@@ -146,7 +146,7 @@ where T: DeserializeOwned + Clone {
 
     /// Creates a new instance of [PocketBase].
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
-        let client = Arc::new(Client::new());
+        let client = Client::new();
         let url = base_url.into().strip_suffix("/").unwrap().to_owned();
         Ok(Self {
             client: client.clone(),
