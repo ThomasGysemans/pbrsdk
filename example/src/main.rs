@@ -24,7 +24,6 @@ async fn main() {
     let pb = PocketBase::default("http://localhost:8091/").unwrap();
     authenticate(&pb).await;
     let articles = fetch_all_articles(&pb).await;
-    let paginated_articles = fetch_first_articles(&pb).await;
 }
 
 async fn authenticate(pb: &PocketBase) {
@@ -48,7 +47,7 @@ async fn fetch_all_articles(pb: &PocketBase) -> Vec<Article> {
     } else {
         let res = response.unwrap();
         println!("Articles fetched : {:#?}", res);
-        res.items
+        res
     }
 }
 

@@ -43,6 +43,22 @@
                 "price": 10000,
                 "public": true,
                 "updated": "2026-01-28 16:16:25.428Z"
+            },
+            {
+                "created": "2026-02-10 11:51:27.772Z",
+                "id": "x4esjr8xe1yrrzv",
+                "name": "Apple",
+                "price": 5,
+                "public": true,
+                "updated": "2026-02-10 11:51:27.772Z"
+            },
+            {
+                "created": "2026-02-10 11:52:00.057Z",
+                "id": "qht14xersgv7ahx",
+                "name": "Pear",
+                "price": 5,
+                "public": true,
+                "updated": "2026-02-10 11:52:00.057Z"
             }
         ]
     }

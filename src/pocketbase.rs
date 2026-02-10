@@ -82,11 +82,23 @@ impl ListOptions {
         }
     }
 
+    /// Creates a simple instance that will only care about
+    /// the page number and the amount of items per page,
+    /// and also set "skip_total" to true.
+    pub fn paginated_and_skip(page: u64, per_page: u64) -> Self {
+        ListOptions {
+            page: Some(page),
+            per_page: Some(per_page),
+            skip_total: Some(true),
+            ..ListOptions::default()
+        }
+    }
+
     pub(crate) fn to_url_query(&self) -> String {
         let mut url = "?".to_string();
         if let Some(page) = self.page { url.push_str(&format!("page={}&", page)); }
         if let Some(per_page) = self.per_page { url.push_str(&format!("perPage={}&", per_page)); }
-        if let Some(skip_total) = self.skip_total { url.push_str(&format!("skipTotal={}&", skip_total)); }
+        if let Some(skip_total) = self.skip_total { url.push_str(&format!("skipTotal={}&", if skip_total { "1" } else { "0" })); }
         if let Some(filter) = &self.filter { url.push_str(&format!("filter={}&", filter)); }
         if let Some(fields) = &self.fields { url.push_str(&format!("fields={}&", fields)); }
         if let Some(expand) = &self.expand { url.push_str(&format!("expand={}&", expand)); }
@@ -180,15 +192,25 @@ where T: DeserializeOwned + Clone {
     }
 
     /// Gets the full list of records from the collection.
-    pub async fn get_full_list<E: DeserializeOwned>(&self) -> Result<ListResponse<E>, ApiError> {
-        let url = format!("{}/api/collections/{}/records", self.base_url, self.collection_id_or_name);
-        let headers = self.get_auth_headers();
-        let body = self.client
-            .get(&url)
-            .headers(headers)
-            .send().await?
-            .text().await?;
-        self.handle_response_body(&body).await
+    pub async fn get_full_list<E: DeserializeOwned>(&self) -> Result<Vec<E>, ApiError> {
+        let mut page_index = 1u64;
+        let mut items: Vec<E> = Vec::new();
+        loop {
+            let pages = self.get_list::<E>(&ListOptions::paginated_and_skip(page_index, 1000)).await;
+            if let Err(err) = pages {
+                return Err(err);
+            }
+            if let Ok(mut page) = pages {
+                let number_of_fetched_items = page.items.len();
+                items.append(&mut page.items);
+                if number_of_fetched_items == page.per_page as usize {
+                    page_index += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+        Ok(items)
     }
 
     /// Authenticates using an identity field (usually an email address) and a password.
