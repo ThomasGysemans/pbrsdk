@@ -36,10 +36,10 @@ where T: DeserializeOwned + Clone {
 #[serde(rename_all = "camelCase")]
 pub struct ListResponse<T> {
     pub items: Vec<T>,
-    pub page: f64,
-    pub per_page: f64,
-    pub total_items: f64,
-    pub total_pages: f64,
+    pub page: u64,
+    pub per_page: u64,
+    pub total_items: i64,
+    pub total_pages: i64,
 }
 
 #[derive(Debug, Deserialize)]

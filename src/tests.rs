@@ -55,6 +55,7 @@ struct TestData {
     data: Data,
 }
 
+#[allow(dead_code)]
 static DEMO: Lazy<TestData> = Lazy::new(|| {
     let json = include_str!("../demo-data.json");
     serde_json::from_str(json).expect("invalid demo data JSON file")
@@ -109,7 +110,7 @@ mod tests {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&ListOptions::default()).await.expect("Could not fetch articles.");
         assert!(!fetched_records.items.is_empty());
-        assert_eq!(fetched_records.total_pages, 1.);
+        assert_eq!(fetched_records.total_pages, 1);
         assert_eq!(fetched_records.total_items as usize, DEMO.data.articles.len());
         for (index, article) in fetched_records.items.iter().enumerate() {
             assert_eq!(article.id, DEMO.data.articles[index].id);
@@ -128,7 +129,7 @@ mod tests {
         assert!(demo_records.len() > 0);
         assert!(fetched_records.items.len() > 0);
         assert_eq!(fetched_records.total_items as usize, demo_records.len());
-        assert_eq!(fetched_records.total_pages, 1.);
+        assert_eq!(fetched_records.total_pages, 1);
         for (i, fetched_record) in fetched_records.items.iter().enumerate() {
             assert_eq!(fetched_record.id, demo_records[i].id);
             assert!(fetched_record.public);
