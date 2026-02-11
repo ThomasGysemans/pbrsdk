@@ -21,10 +21,6 @@ async function main() {
     for (const collectionName of Object.keys(demo.data)) {
         const records = demo.data[collectionName];
         for (const record of records) {
-            if (collectionName === "users") {
-                record.password = "qwertyui";
-                record.passwordConfirm = "qwertyui";
-            }
             await pb.collection(collectionName).create(record);
         }
     }

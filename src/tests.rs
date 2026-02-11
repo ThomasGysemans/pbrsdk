@@ -1,4 +1,3 @@
-
 use serde::*;
 use once_cell::sync::Lazy;
 
@@ -17,6 +16,8 @@ struct UsersRecord {
     email: String,
     id: String,
     name: String,
+    password: String,
+    password_confirm: String,
     email_visibility: bool,
     verified: bool,
 }
@@ -128,11 +129,57 @@ mod tests {
         let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
         assert!(demo_records.len() > 0);
         assert!(fetched_records.items.len() > 0);
+        assert_eq!(fetched_records.items.len(), demo_records.len());
         assert_eq!(fetched_records.total_items as usize, demo_records.len());
         assert_eq!(fetched_records.total_pages, 1);
         for (i, fetched_record) in fetched_records.items.iter().enumerate() {
             assert_eq!(fetched_record.id, demo_records[i].id);
             assert!(fetched_record.public);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_list_with_filter_and_skip_total() {
+        let options = ListOptions {
+            skip_total: Some(true),
+            filter: Some("public=true".to_string()),
+            ..ListOptions::default()
+        };
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        assert!(demo_records.len() > 0);
+        assert!(fetched_records.items.len() > 0);
+        assert_eq!(fetched_records.items.len(), demo_records.len());
+        assert_eq!(fetched_records.total_items, -1);
+        assert_eq!(fetched_records.total_pages, -1);
+        for (i, fetched_record) in fetched_records.items.iter().enumerate() {
+            assert_eq!(fetched_record.id, demo_records[i].id);
+            assert!(fetched_record.public);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_list_paginated() {
+        let options = ListOptions {
+            page: Some(2),
+            per_page: Some(2),
+            filter: Some("public=true".to_string()),
+            ..ListOptions::default()
+        };
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
+        let demo_page_2 = demo_records.chunks(2).nth(1).unwrap();
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        assert!(demo_records.len() > 2, "Demo records don't have enough 'public' articles to do this test correctly");
+        assert!(demo_records.len() > 0);
+        assert_eq!(fetched_records.page, 2);
+        assert_eq!(fetched_records.per_page, 2);
+        assert_eq!(fetched_records.total_items as usize, demo_records.len());
+        assert_eq!(fetched_records.total_pages, demo_records.len().div_ceil(2) as i64);
+        assert_eq!(demo_page_2.len(), fetched_records.items.len());
+        for (i, fetched_record) in fetched_records.items.iter().enumerate() {
+            assert_eq!(fetched_record.id, demo_page_2[i].id);
         }
     }
 
@@ -144,5 +191,51 @@ mod tests {
         for (index, fetched_record) in fetched_records.iter().enumerate() {
             assert_eq!(fetched_record.id, DEMO.data.articles[index].id);
         }
+    }
+
+    #[tokio::test]
+    async fn test_auth_simple_user() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo_user = &DEMO.data.users[0];
+        let res = pb.collection("users").auth_with_password(&demo_user.email, &demo_user.password).await.expect("Could not authenticate user.");
+        let auth_store = pb.auth_store();
+        assert!(!res.token.is_empty());
+        assert!(auth_store.token.is_some());
+        assert!(auth_store.record.is_some());
+        assert!(auth_store.collection_id.is_some());
+        assert!(auth_store.collection_name.is_some());
+        assert_eq!(auth_store.collection_name.as_ref().unwrap(), "users");
+        assert_eq!(auth_store.collection_name.as_ref().unwrap().to_string(), res.record.collection_name);
+        assert_eq!(auth_store.collection_id.as_ref().unwrap().to_string(), res.record.collection_id);
+        assert_eq!(auth_store.token.as_ref().unwrap().to_string(), res.token);
+        assert_eq!(auth_store.record.as_ref().unwrap().id, res.record.id);
+        assert_eq!(auth_store.record.as_ref().unwrap().id, demo_user.id);
+        assert_eq!(auth_store.record.as_ref().unwrap().name.as_ref().unwrap().to_string(), res.record.name.unwrap());
+        assert_eq!(auth_store.record.as_ref().unwrap().name.as_ref().unwrap().to_string(), demo_user.name);
+        assert!(auth_store.is_some());
+        assert!(auth_store.is_valid());
+        assert!(!auth_store.is_superuser());
+    }
+
+    #[tokio::test]
+    async fn test_auth_superuser() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let res = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await.expect("Could not authenticate super user.");
+        let auth_store = pb.auth_store();
+        assert!(!res.token.is_empty());
+        assert!(auth_store.token.is_some());
+        assert!(auth_store.record.is_some());
+        assert!(auth_store.collection_id.is_some());
+        assert!(auth_store.collection_name.is_some());
+        assert_eq!(auth_store.collection_name.as_ref().unwrap(), "_superusers");
+        assert_eq!(auth_store.collection_name.as_ref().unwrap().to_string(), res.record.collection_name);
+        assert_eq!(auth_store.collection_id.as_ref().unwrap().to_string(), res.record.collection_id);
+        assert_eq!(auth_store.token.as_ref().unwrap().to_string(), res.token);
+        assert_eq!(auth_store.record.as_ref().unwrap().id, res.record.id);
+        assert!(res.record.name.is_none());
+        assert!(auth_store.record.as_ref().unwrap().name.is_none());
+        assert!(auth_store.is_some());
+        assert!(auth_store.is_valid());
+        assert!(auth_store.is_superuser());
     }
 }

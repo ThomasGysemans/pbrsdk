@@ -16,6 +16,8 @@
                 "id": "0p0vbr35ph2zter",
                 "name": "Thomas Gysemans",
                 "updated": "2026-01-28 10:41:47.831Z",
+                "password": "qwertyui",
+                "passwordConfirm": "qwertyui",
                 "verified": true
             }
         ],

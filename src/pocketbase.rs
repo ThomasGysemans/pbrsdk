@@ -263,7 +263,7 @@ where T: DeserializeOwned + Clone {
             let token = response.token.clone();
             let mut lock = self.auth_store.lock().unwrap();
             lock.set_token(token);
-            lock.set_collection(response.record.collection_id.clone(), response.record.collection_name.clone());
+            lock.set_collection(response.record.collection_name.clone(), response.record.collection_id.clone());
             if let Ok(actual_result) = &result {
             lock.set_record(actual_result.record.clone());
             }
