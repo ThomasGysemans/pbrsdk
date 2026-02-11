@@ -216,6 +216,16 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_authless_get_first_list_item() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo = DEMO.data.articles.iter().find(|x| { x.public }).expect("Could not find demo article with 'public' set to true.");
+        let fetched_record = pb.collection("articles").get_first_list_item::<ArticleRecord>("public=true", None).await.expect("Could not fetch article.");
+        assert_eq!(fetched_record.id, demo.id);
+        assert_eq!(fetched_record.public, demo.public);
+        assert!(fetched_record.public);
+    }
+
+    #[tokio::test]
     async fn test_auth_simple_user() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo_user = &DEMO.data.users[0];

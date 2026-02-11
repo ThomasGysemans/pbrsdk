@@ -107,14 +107,15 @@ impl ListOptions {
         }
     }
 
+    /// Build list options based on view options and filter.
     pub fn from_view(page: Option<u64>, per_page: Option<u64>, filter: Option<String>, view_options: Option<ViewOptions>) -> Self {
         ListOptions {
             page,
             per_page,
             filter,
-            fields: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().fields.clone() } else { None },
-            expand: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().expand.clone() } else { None },
-            sort: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().sort.clone() } else { None },
+            fields: if view_options.as_ref().is_some() { view_options.as_ref().unwrap().fields.clone() } else { None },
+            expand: if view_options.as_ref().is_some() { view_options.as_ref().unwrap().expand.clone() } else { None },
+            sort: if view_options.as_ref().is_some() { view_options.as_ref().unwrap().sort.clone() } else { None },
             skip_total: Some(true),
         }
     }
