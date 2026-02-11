@@ -53,7 +53,7 @@ async fn fetch_all_articles(pb: &PocketBase) -> Vec<Article> {
 }
 
 async fn fetch_first_articles(pb: &PocketBase) -> Vec<Article> {
-    let response = pb.collection("articles").get_list(&ListOptions::paginated(1, 1)).await;
+    let response = pb.collection("articles").get_list(ListOptions::paginated(1, 1)).await;
     if let Err(err) = response {
         panic!("{}", err);
     } else {

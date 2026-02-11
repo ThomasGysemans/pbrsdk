@@ -50,7 +50,7 @@ pub struct ResponseError {
 
 /// The query parameters for the API route `/api/collections/NAME/records`.
 /// This route would return paginated results by default.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ListOptions {
     /// The page number.
     /// Starts at 1.
@@ -203,7 +203,7 @@ where T: DeserializeOwned + Clone {
     }
 
     /// Fetches pages of records.
-    pub async fn get_list<E: DeserializeOwned>(&self, options: &ListOptions) -> Result<ListResponse<E>, ApiError> {
+    pub async fn get_list<E: DeserializeOwned>(&self, options: ListOptions) -> Result<ListResponse<E>, ApiError> {
         let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.to_url_query());
         let headers = self.get_auth_headers();
         let body = self.client
@@ -216,8 +216,8 @@ where T: DeserializeOwned + Clone {
 
     /// Fetches one record based on its ID, which must exist.
     /// If the ID isn't found, the server will return a 404 error.
-    pub async fn get_one<E: DeserializeOwned>(&self, id: &String, options: Option<ViewOptions>) -> Result<E, ApiError> {
-        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(id), options.unwrap_or_default().to_url_query());
+    pub async fn get_one<E: DeserializeOwned>(&self, id: impl Into<String>, options: Option<ViewOptions>) -> Result<E, ApiError> {
+        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
         let headers = self.get_auth_headers();
         let body = self.client
             .get(&url)
@@ -232,7 +232,7 @@ where T: DeserializeOwned + Clone {
         let mut page_index = 1u64;
         let mut items: Vec<E> = Vec::new();
         loop {
-            let pages = self.get_list::<E>(&ListOptions::paginated_and_skip(page_index, 1000)).await;
+            let pages = self.get_list::<E>(ListOptions::paginated_and_skip(page_index, 1000)).await;
             if let Err(err) = pages {
                 return Err(err);
             }

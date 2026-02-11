@@ -109,7 +109,7 @@ mod tests {
     #[tokio::test]
     async fn test_authless_get_list() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
-        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&ListOptions::default()).await.expect("Could not fetch articles.");
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(ListOptions::default()).await.expect("Could not fetch articles.");
         assert!(!fetched_records.items.is_empty());
         assert_eq!(fetched_records.total_pages, 1);
         assert_eq!(fetched_records.total_items as usize, DEMO.data.articles.len());
@@ -126,7 +126,7 @@ mod tests {
         };
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
-        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(options).await.expect("Could not fetch articles.");
         assert!(demo_records.len() > 0);
         assert!(fetched_records.items.len() > 0);
         assert_eq!(fetched_records.items.len(), demo_records.len());
@@ -147,7 +147,7 @@ mod tests {
         };
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
-        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(options).await.expect("Could not fetch articles.");
         assert!(demo_records.len() > 0);
         assert!(fetched_records.items.len() > 0);
         assert_eq!(fetched_records.items.len(), demo_records.len());
@@ -170,7 +170,7 @@ mod tests {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
         let demo_page_2 = demo_records.chunks(2).nth(1).unwrap();
-        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(options).await.expect("Could not fetch articles.");
         assert!(demo_records.len() > 2, "Demo records don't have enough 'public' articles to do this test correctly");
         assert!(demo_records.len() > 0);
         assert_eq!(fetched_records.page, 2);
