@@ -2,13 +2,13 @@
 use serde::*;
 use once_cell::sync::Lazy;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
 struct ExistingCollection {
     fields: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused_variables, dead_code)]
 struct UsersRecord {
@@ -21,7 +21,7 @@ struct UsersRecord {
     verified: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused_variables, dead_code)]
 struct ArticleRecord {
@@ -33,21 +33,21 @@ struct ArticleRecord {
     public: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
 struct Data {
     users: Vec<UsersRecord>,
     articles: Vec<ArticleRecord>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
 struct ExistingCollections {
     users: ExistingCollection,
     articles: ExistingCollection,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused_variables, dead_code)]
 struct TestData {
@@ -102,5 +102,46 @@ mod tests {
         assert_eq!(fetched_record.name, demo_record.name);
         assert_eq!(fetched_record.price, demo_record.price);
         assert_eq!(fetched_record.public, demo_record.public);
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_list() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&ListOptions::default()).await.expect("Could not fetch articles.");
+        assert!(!fetched_records.items.is_empty());
+        assert_eq!(fetched_records.total_pages, 1.);
+        assert_eq!(fetched_records.total_items as usize, DEMO.data.articles.len());
+        for (index, article) in fetched_records.items.iter().enumerate() {
+            assert_eq!(article.id, DEMO.data.articles[index].id);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_list_with_filter() {
+        let options = ListOptions {
+            filter: Some("public=true".to_string()),
+            ..ListOptions::default()
+        };
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo_records = DEMO.data.articles.iter().filter(|x| { x.public }).collect::<Vec<&ArticleRecord>>();
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(&options).await.expect("Could not fetch articles.");
+        assert!(demo_records.len() > 0);
+        assert!(fetched_records.items.len() > 0);
+        assert_eq!(fetched_records.total_items as usize, demo_records.len());
+        assert_eq!(fetched_records.total_pages, 1.);
+        for (i, fetched_record) in fetched_records.items.iter().enumerate() {
+            assert_eq!(fetched_record.id, demo_records[i].id);
+            assert!(fetched_record.public);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_full_list() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let fetched_records = pb.collection("articles").get_full_list::<ArticleRecord>().await.expect("Could not fetch articles.");
+        assert_eq!(fetched_records.len(), DEMO.data.articles.len());
+        for (index, fetched_record) in fetched_records.iter().enumerate() {
+            assert_eq!(fetched_record.id, DEMO.data.articles[index].id);
+        }
     }
 }
