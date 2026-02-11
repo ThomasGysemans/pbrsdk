@@ -34,6 +34,17 @@ struct ArticleRecord {
     public: bool,
 }
 
+#[derive(Serialize, Debug)]
+struct ArticleRecordPayload {
+    // "id" is included just for testing purposes
+    // obviously "id" isn't necessary in the payload
+    // of the POST requests.
+    id: String,
+    name: String,
+    price: f64,
+    public: bool,
+}
+
 #[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
 struct Data {
@@ -269,5 +280,30 @@ mod tests {
         assert!(auth_store.is_some());
         assert!(auth_store.is_valid());
         assert!(auth_store.is_superuser());
+    }
+
+    #[tokio::test]
+    async fn test_delete_and_create() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let _ = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await;
+        assert!(pb.auth_store().token.is_some());
+        let demo = DEMO.data.articles[0].clone();
+        assert!(pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.is_ok(), "The demo JS script needs to be re-run because it's out of sync.");
+        let _ = pb.collection("articles").delete(demo.id.clone()).await.expect("Could not delete article.");
+        assert!(pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.is_err());
+        let payload = ArticleRecordPayload {
+            id: demo.id.clone(),
+            name: demo.name.clone(),
+            price: demo.price,
+            public: demo.public,
+        };
+        let record: ArticleRecord = pb.collection("articles").create(payload, None).await.expect("Could not create article.");
+        assert!(pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.is_ok(), "Record was not actually created");
+        assert_eq!(record.id, demo.id);
+        assert_eq!(record.name, demo.name);
+        assert_eq!(record.public, demo.public);
+        assert_eq!(record.price, demo.price);
+        assert_ne!(record.updated, demo.updated);
+        assert_ne!(record.created, demo.created);
     }
 }

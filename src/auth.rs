@@ -72,7 +72,7 @@ pub(crate) struct DefaultAuthResponseRecord {
 }
 
 #[derive(Debug, Serialize)]
-pub(crate) struct AuthRequest {
+pub(crate) struct AuthRequestPayload {
     pub identity: String,
     pub password: String,
 }

@@ -2,9 +2,9 @@ use std::sync::{Arc, Mutex};
 use reqwest::{Client, StatusCode};
 use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use urlencoding::encode;
-use crate::auth::{AuthRequest, AuthResponse, AuthStore, DefaultAuthRecord, DefaultAuthResponseRecord};
+use crate::auth::{AuthRequestPayload, AuthResponse, AuthStore, DefaultAuthRecord, DefaultAuthResponseRecord};
 use crate::error::ApiError;
 
 #[derive(Clone)]
@@ -269,7 +269,7 @@ where T: DeserializeOwned + Clone {
     /// This is equivalent to calling `get_list()` with options "page" and "per_page" set to 1,
     /// then "skip_total" set to "false" and passing along the filter.
     ///
-    /// For consistency with `get_one()`, this method will throw a 404 if the item wasn't found.
+    /// For consistency with `get_one()`, this method will throw a 404 if the item isn't found.
     pub async fn get_first_list_item<E: DeserializeOwned>(&self, filter: impl Into<String>, options: Option<ViewOptions>) -> Result<E, ApiError> {
         let list_options = ListOptions::from_view(Some(1), Some(1), Some(filter.into()), options);
         let page = self.get_list::<E>(list_options).await;
@@ -282,10 +282,45 @@ where T: DeserializeOwned + Clone {
         Err(ApiError::Http(StatusCode::NOT_FOUND, "There is no record matching the filter.".to_string()))
     }
 
+    /// Creates a new item and returns the new record.
+    pub async fn create<E: DeserializeOwned, S: Serialize>(&self, body: S, options: Option<ViewOptions>) -> Result<E, ApiError> {
+        let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.unwrap_or_default().to_url_query());
+        let headers = self.get_auth_headers();
+        let body = self.client
+            .post(&url)
+            .headers(headers)
+            .json(&body)
+            .send().await?
+            .text().await?;
+        self.handle_response_body(&body).await
+    }
+
+    /// Deletes an existing item by its id.
+    /// Returns nothing if the operation succeeds.
+    pub async fn delete(&self, id: impl Into<String>) -> Result<(), ApiError> {
+        let url = format!("{}/api/collections/{}/records/{}", self.base_url, self.collection_id_or_name, encode(&id.into()));
+        let headers = self.get_auth_headers();
+        let body = self.client
+            .delete(&url)
+            .headers(headers)
+            .send().await?
+            .text().await?;
+        if body.is_empty() {
+            Ok(())
+        } else {
+            let error = serde_json::from_str::<ResponseError>(&body);
+            if let Ok(error) = error {
+                Err(ApiError::Http(StatusCode::from_u16(error.status).unwrap(), error.message))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
     /// Authenticates using an identity field (usually an email address) and a password.
     pub async fn auth_with_password(&mut self, identity: impl Into<String>, password: impl Into<String>) -> Result<AuthResponse<T>, ApiError> {
         let url = format!("{}/api/collections/{}/auth-with-password", self.base_url, self.collection_id_or_name);
-        let payload = AuthRequest {
+        let payload = AuthRequestPayload {
             password: password.into(),
             identity: identity.into(),
         };
