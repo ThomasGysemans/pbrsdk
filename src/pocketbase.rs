@@ -75,6 +75,9 @@ pub struct ListOptions {
 /// Options to view a collection's record.
 #[derive(Debug, Default)]
 pub struct ViewOptions {
+    /// Comma separated string of the fields to return
+    /// in the JSON response (by default returns all fields).
+    pub fields: Option<String>,
     /// Auto expand record relations.
     pub expand: Option<String>,
     /// Specify the records order attribute.
@@ -101,6 +104,18 @@ impl ListOptions {
             per_page: Some(per_page),
             skip_total: Some(true),
             ..ListOptions::default()
+        }
+    }
+
+    pub fn from_view(page: Option<u64>, per_page: Option<u64>, filter: Option<String>, view_options: Option<ViewOptions>) -> Self {
+        ListOptions {
+            page,
+            per_page,
+            filter,
+            fields: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().fields.clone() } else { None },
+            expand: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().expand.clone() } else { None },
+            sort: if view_options.as_ref().is_none() { view_options.as_ref().unwrap().sort.clone() } else { None },
+            skip_total: Some(true),
         }
     }
 
@@ -247,6 +262,23 @@ where T: DeserializeOwned + Clone {
             }
         }
         Ok(items)
+    }
+
+    /// Returns the first found item by the specified filter.
+    /// This is equivalent to calling `get_list()` with options "page" and "per_page" set to 1,
+    /// then "skip_total" set to "false" and passing along the filter.
+    ///
+    /// For consistency with `get_one()`, this method will throw a 404 if the item wasn't found.
+    pub async fn get_first_list_item<E: DeserializeOwned>(&self, filter: impl Into<String>, options: Option<ViewOptions>) -> Result<E, ApiError> {
+        let list_options = ListOptions::from_view(Some(1), Some(1), Some(filter.into()), options);
+        let page = self.get_list::<E>(list_options).await;
+        if let Err(err) = page {
+            return Err(err);
+        }
+        if let Ok(mut page) = page {
+            return Ok(page.items.pop().unwrap());
+        }
+        Err(ApiError::Http(StatusCode::NOT_FOUND, "There is no record matching the filter.".to_string()))
     }
 
     /// Authenticates using an identity field (usually an email address) and a password.
