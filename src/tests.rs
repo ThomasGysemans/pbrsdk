@@ -22,7 +22,7 @@ struct UsersRecord {
     verified: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused_variables, dead_code)]
 struct ArticleRecord {
@@ -190,6 +190,28 @@ mod tests {
         assert_eq!(fetched_records.len(), DEMO.data.articles.len());
         for (index, fetched_record) in fetched_records.iter().enumerate() {
             assert_eq!(fetched_record.id, DEMO.data.articles[index].id);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_authless_get_list_and_sort() {
+        let options = ListOptions {
+            sort: Some("+name".to_string()),
+            ..ListOptions::default()
+        };
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let mut sorted_demo = DEMO.data.articles.clone();
+        sorted_demo.sort_by(|a, b| a.name.cmp(&b.name));
+        let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(options).await.expect("Could not fetch articles.");
+        let sorted_names = sorted_demo.iter().map(|x| x.name.clone()).collect::<Vec<String>>();
+        let original_names = DEMO.data.articles.iter().map(|x| x.name.clone()).collect::<Vec<String>>();
+        assert!(fetched_records.items.len() > 0);
+        assert_eq!(fetched_records.items.len(), DEMO.data.articles.len());
+        assert_eq!(fetched_records.items.len(), sorted_demo.len());
+        assert_ne!(sorted_names, original_names, "The articles of the demo are already sorted, meaning this test is not reliable.");
+        for (i, fetched_record) in fetched_records.items.iter().enumerate() {
+            assert_eq!(fetched_record.id, sorted_demo[i].id);
+            assert_eq!(fetched_record.name, sorted_demo[i].name);
         }
     }
 
