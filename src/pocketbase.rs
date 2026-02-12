@@ -317,6 +317,20 @@ where T: DeserializeOwned + Clone {
         }
     }
 
+    /// Updates an existing item by its ID.
+    pub async fn update<E: DeserializeOwned, S: Serialize>(&self, id: impl Into<String>, body: S, options: Option<ViewOptions>) -> Result<E, ApiError> {
+        // TODO: handle reauthentication if the update changes the password of the current user ?
+        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
+        let headers = self.get_auth_headers();
+        let body = self.client
+            .patch(&url)
+            .headers(headers)
+            .json(&body)
+            .send().await?
+            .text().await?;
+        self.handle_response_body(&body).await
+    }
+
     /// Authenticates using an identity field (usually an email address) and a password.
     pub async fn auth_with_password(&mut self, identity: impl Into<String>, password: impl Into<String>) -> Result<AuthResponse<T>, ApiError> {
         let url = format!("{}/api/collections/{}/auth-with-password", self.base_url, self.collection_id_or_name);

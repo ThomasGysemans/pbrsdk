@@ -1,5 +1,6 @@
 use serde::*;
 use once_cell::sync::Lazy;
+use serial_test::serial;
 
 #[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
@@ -43,6 +44,11 @@ struct ArticleRecordPayload {
     name: String,
     price: f64,
     public: bool,
+}
+
+#[derive(Serialize, Debug)]
+struct ArticleUpdatePayload {
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -105,6 +111,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_one() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let id = "x4esjr8xe1yrrzv".to_string();
@@ -118,18 +125,20 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_list() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let fetched_records = pb.collection("articles").get_list::<ArticleRecord>(ListOptions::default()).await.expect("Could not fetch articles.");
         assert!(!fetched_records.items.is_empty());
         assert_eq!(fetched_records.total_pages, 1);
         assert_eq!(fetched_records.total_items as usize, DEMO.data.articles.len());
-        for (index, article) in fetched_records.items.iter().enumerate() {
-            assert_eq!(article.id, DEMO.data.articles[index].id);
+        for article in fetched_records.items.iter() {
+            DEMO.data.articles.iter().find(|x| { x.id == article.id }).expect("Missing demo article");
         }
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_list_with_filter() {
         let options = ListOptions {
             filter: Some("public=true".to_string()),
@@ -150,6 +159,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_list_with_filter_and_skip_total() {
         let options = ListOptions {
             skip_total: Some(true),
@@ -171,6 +181,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_list_paginated() {
         let options = ListOptions {
             page: Some(2),
@@ -195,16 +206,18 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_full_list() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let fetched_records = pb.collection("articles").get_full_list::<ArticleRecord>().await.expect("Could not fetch articles.");
         assert_eq!(fetched_records.len(), DEMO.data.articles.len());
-        for (index, fetched_record) in fetched_records.iter().enumerate() {
-            assert_eq!(fetched_record.id, DEMO.data.articles[index].id);
+        for article in fetched_records.iter() {
+            DEMO.data.articles.iter().find(|x| { x.id == article.id }).expect("Missing demo article");
         }
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_list_and_sort() {
         let options = ListOptions {
             sort: Some("+name".to_string()),
@@ -227,6 +240,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_authless_get_first_list_item() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo = DEMO.data.articles.iter().find(|x| { x.public }).expect("Could not find demo article with 'public' set to true.");
@@ -237,6 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_auth_simple_user() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let demo_user = &DEMO.data.users[0];
@@ -261,6 +276,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_auth_superuser() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let res = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await.expect("Could not authenticate super user.");
@@ -283,6 +299,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_delete_and_create() {
         let pb = PocketBase::default("http://localhost:8091/").unwrap();
         let _ = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await;
@@ -297,13 +314,36 @@ mod tests {
             price: demo.price,
             public: demo.public,
         };
-        let record: ArticleRecord = pb.collection("articles").create(payload, None).await.expect("Could not create article.");
-        assert!(pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.is_ok(), "Record was not actually created");
-        assert_eq!(record.id, demo.id);
-        assert_eq!(record.name, demo.name);
-        assert_eq!(record.public, demo.public);
-        assert_eq!(record.price, demo.price);
-        assert_ne!(record.updated, demo.updated);
-        assert_ne!(record.created, demo.created);
+        let created_record: ArticleRecord = pb.collection("articles").create(payload, None).await.expect("Could not create article.");
+        let fetched_record: ArticleRecord = pb.collection("articles").get_one(demo.id.clone(), None).await.expect("Could not fetch article.");
+        assert_eq!(created_record.id, fetched_record.id);
+        assert_eq!(created_record.id, demo.id);
+        assert_eq!(created_record.name, demo.name);
+        assert_eq!(created_record.public, demo.public);
+        assert_eq!(created_record.price, demo.price);
+        assert_ne!(created_record.updated, demo.updated);
+        assert_ne!(created_record.created, demo.created);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let _ = pb.collection("_superusers").auth_with_password("thomas@gysemans.dev", "thomasgysemans").await;
+        assert!(pb.auth_store().token.is_some());
+        let demo = DEMO.data.articles[0].clone();
+        let fetched_article = pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.expect("Could not fetch test article");
+        assert_eq!(fetched_article.id, demo.id);
+        assert_eq!(fetched_article.name, demo.name);
+        let updated_article: ArticleRecord = pb.collection("articles").update(demo.id.clone(), ArticleUpdatePayload { name: "new name".into() }, None).await.expect("Could not update article.");
+        assert_eq!(demo.id, updated_article.id);
+        assert_eq!(updated_article.name, "new name");
+        assert_ne!(updated_article.name, demo.name);
+        let new_update: ArticleRecord = pb.collection("articles").update(demo.id.clone(), ArticleUpdatePayload { name: demo.name.clone() }, None).await.expect("Could not update article again.");
+        assert_eq!(demo.id, new_update.id);
+        assert_eq!(new_update.name, demo.name);
+        let fetched_again = pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.unwrap();
+        assert_eq!(fetched_again.id, demo.id);
+        assert_eq!(fetched_again.name, demo.name);
     }
 }
