@@ -16,9 +16,8 @@ where T: DeserializeOwned + Clone {
 pub(crate) struct PocketBaseRef<T = DefaultAuthRecord>
 where T: DeserializeOwned + Clone {
     pub(crate) auth_store: Arc<Mutex<AuthStore<T>>>,
-    pub(crate) collections: CollectionService,
-    pub(crate) client: Client,
     pub(crate) base_url: String,
+    pub(crate) client: Client,
 }
 
 impl<T> PocketBase<T>
@@ -26,9 +25,6 @@ where T: DeserializeOwned + Clone {
     /// Returns a reference to the base URL String that was given
     /// when initiating the [PocketBase] instance.
     pub fn base_url(&self) -> &String { &self.inner.base_url }
-
-    /// Returns a reference to the [CollectionService] instance.
-    pub fn collections(&self) -> &CollectionService { &self.inner.collections }
 
     /// Returns a clone of the AuthStore instance stored in the [PocketBase] struct.
     pub fn auth_store(&self) -> AuthStore<T> { self.inner.auth_store.lock().unwrap().clone() }
@@ -42,20 +38,23 @@ where T: DeserializeOwned + Clone {
                 client: client.clone(),
                 base_url: url.clone(),
                 auth_store: Arc::new(Mutex::new(AuthStore::default())),
-                collections: CollectionService {
-                    base_crud_path: "/api/collections",
-                    base_url: url.clone(),
-                    client: client.clone(),
-                }
             })
         })
     }
 
-    /// Creates an instance of collection that you will later be able to fetch.
+    /// Creates an instance of [RecordService] that you will later be able to fetch.
     /// In itself it doesn't check if the collection exists.
     pub fn collection(&self, name_or_id: impl Into<String>) -> RecordService<T> {
         RecordService {
             collection_id_or_name: name_or_id.into(),
+            pb: self.inner.clone(),
+        }
+    }
+
+    /// Returns a reference to the [CollectionService] instance.
+    pub fn collections(&self) -> CollectionService<T> {
+        CollectionService {
+            base_crud_path: "/api/collections",
             pb: self.inner.clone(),
         }
     }
