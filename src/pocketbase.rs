@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 use reqwest::{Client};
 use serde::de::DeserializeOwned;
 use crate::auth::{AuthStore, DefaultAuthRecord};
-use crate::collection_service::CollectionService;
-use crate::record_service::RecordService;
+use crate::CollectionService;
+use crate::services::record_service::RecordService;
 use crate::error::ApiError;
 
 /// Creates a pocketbase instance from which requests to the server can be made.

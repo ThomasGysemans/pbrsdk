@@ -30,14 +30,13 @@ mod pocketbase;
 mod error;
 mod auth;
 mod tests;
-mod record_service;
-mod collection_service;
 mod common;
+mod services;
 
 pub use pbrsdk_macros::base_system_fields;
 pub use pocketbase::*;
 pub use error::*;
 pub use common::*;
 pub use auth::*;
-pub use record_service::*;
-pub use collection_service::*;
+pub use services::record_service::*;
+pub use services::collection_service::*;
