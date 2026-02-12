@@ -1,12 +1,13 @@
-use std::sync::{Arc, Mutex};
-use reqwest::{Client, StatusCode};
+use std::sync::{Arc};
+use reqwest::{StatusCode};
 use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 use crate::error::{ApiError};
-use crate::auth::{AuthStore, AuthRequestPayload, AuthResponse, DefaultAuthResponseRecord};
+use crate::auth::{AuthRequestPayload, AuthResponse, DefaultAuthResponseRecord};
 use crate::common::{ResponseError, ViewOptions, ListOptions};
+use crate::pocketbase::PocketBaseRef;
 
 /// The server's response when requesting a list of records.
 #[derive(Debug, Deserialize)]
@@ -34,10 +35,8 @@ pub struct ListResponse<T> {
 /// The service responsible for fetching records.
 pub struct RecordService<T>
 where T: DeserializeOwned + Clone {
-    pub(crate) client: Client,
-    pub(crate) auth_store: Arc<Mutex<AuthStore<T>>>,
-    pub(crate) base_url: String,
     pub(crate) collection_id_or_name: String,
+    pub(crate) pb: Arc<PocketBaseRef<T>>,
 }
 
 impl<T> RecordService<T>
@@ -53,7 +52,7 @@ where T: DeserializeOwned + Clone {
     }
 
     fn get_auth_headers(&self) -> HeaderMap {
-        let store = self.auth_store.lock();
+        let store = self.pb.auth_store.lock();
         let token = store.as_ref().unwrap().token.clone();
         let mut headers: HeaderMap = HeaderMap::new();
         if let Some(token) = token {
@@ -64,9 +63,9 @@ where T: DeserializeOwned + Clone {
 
     /// Fetches pages of records.
     pub async fn get_list<E: DeserializeOwned>(&self, options: ListOptions) -> Result<ListResponse<E>, ApiError> {
-        let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.to_url_query());
+        let url = format!("{}/api/collections/{}/records{}", self.pb.base_url, self.collection_id_or_name, options.to_url_query());
         let headers = self.get_auth_headers();
-        let body = self.client
+        let body = self.pb.client
             .get(&url)
             .headers(headers)
             .send().await?
@@ -77,9 +76,9 @@ where T: DeserializeOwned + Clone {
     /// Fetches one record based on its ID, which must exist.
     /// If the ID isn't found, the server will return a 404 error.
     pub async fn get_one<E: DeserializeOwned>(&self, id: impl Into<String>, options: Option<ViewOptions>) -> Result<E, ApiError> {
-        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
+        let url = format!("{}/api/collections/{}/records/{}{}", self.pb.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
         let headers = self.get_auth_headers();
-        let body = self.client
+        let body = self.pb.client
             .get(&url)
             .headers(headers)
             .send().await?
@@ -128,9 +127,9 @@ where T: DeserializeOwned + Clone {
 
     /// Creates a new item and returns the new record.
     pub async fn create<E: DeserializeOwned, S: Serialize>(&self, body: S, options: Option<ViewOptions>) -> Result<E, ApiError> {
-        let url = format!("{}/api/collections/{}/records{}", self.base_url, self.collection_id_or_name, options.unwrap_or_default().to_url_query());
+        let url = format!("{}/api/collections/{}/records{}", self.pb.base_url, self.collection_id_or_name, options.unwrap_or_default().to_url_query());
         let headers = self.get_auth_headers();
-        let body = self.client
+        let body = self.pb.client
             .post(&url)
             .headers(headers)
             .json(&body)
@@ -142,9 +141,9 @@ where T: DeserializeOwned + Clone {
     /// Deletes an existing item by its id.
     /// Returns nothing if the operation succeeds.
     pub async fn delete(&self, id: impl Into<String>) -> Result<(), ApiError> {
-        let url = format!("{}/api/collections/{}/records/{}", self.base_url, self.collection_id_or_name, encode(&id.into()));
+        let url = format!("{}/api/collections/{}/records/{}", self.pb.base_url, self.collection_id_or_name, encode(&id.into()));
         let headers = self.get_auth_headers();
-        let body = self.client
+        let body = self.pb.client
             .delete(&url)
             .headers(headers)
             .send().await?
@@ -164,9 +163,9 @@ where T: DeserializeOwned + Clone {
     /// Updates an existing item by its ID.
     pub async fn update<E: DeserializeOwned, S: Serialize>(&self, id: impl Into<String>, body: S, options: Option<ViewOptions>) -> Result<E, ApiError> {
         // TODO: handle reauthentication if the update changes the password of the current user ?
-        let url = format!("{}/api/collections/{}/records/{}{}", self.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
+        let url = format!("{}/api/collections/{}/records/{}{}", self.pb.base_url, self.collection_id_or_name, encode(&id.into()), options.unwrap_or_default().to_url_query());
         let headers = self.get_auth_headers();
-        let body = self.client
+        let body = self.pb.client
             .patch(&url)
             .headers(headers)
             .json(&body)
@@ -177,17 +176,17 @@ where T: DeserializeOwned + Clone {
 
     /// Authenticates using an identity field (usually an email address) and a password.
     pub async fn auth_with_password(&mut self, identity: impl Into<String>, password: impl Into<String>) -> Result<AuthResponse<T>, ApiError> {
-        let url = format!("{}/api/collections/{}/auth-with-password", self.base_url, self.collection_id_or_name);
+        let url = format!("{}/api/collections/{}/auth-with-password", self.pb.base_url, self.collection_id_or_name);
         let payload = AuthRequestPayload {
             password: password.into(),
             identity: identity.into(),
         };
-        let body = self.client.post(&url).header("Content-Type", "application/json").json(&payload).send().await?.text().await?;
+        let body = self.pb.client.post(&url).header("Content-Type", "application/json").json(&payload).send().await?.text().await?;
         let tmp = self.handle_response_body::<AuthResponse<DefaultAuthResponseRecord>>(&body).await;
         let result = self.handle_response_body::<AuthResponse<T>>(&body).await;
         if let Ok(response) = &tmp {
             let token = response.token.clone();
-            let mut lock = self.auth_store.lock().unwrap();
+            let mut lock = self.pb.auth_store.lock().unwrap();
             lock.set_token(token);
             lock.set_collection(response.record.collection_name.clone(), response.record.collection_id.clone());
             if let Ok(actual_result) = &result {

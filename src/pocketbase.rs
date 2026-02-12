@@ -10,37 +10,44 @@ use crate::error::ApiError;
 /// It will also store essential pieces of information relative to the authentication.
 pub struct PocketBase<T = DefaultAuthRecord>
 where T: DeserializeOwned + Clone {
-    auth_store: Arc<Mutex<AuthStore<T>>>,
-    collections: CollectionService,
-    client: Client,
-    base_url: String,
+    inner: Arc<PocketBaseRef<T>>,
+}
+
+pub(crate) struct PocketBaseRef<T = DefaultAuthRecord>
+where T: DeserializeOwned + Clone {
+    pub(crate) auth_store: Arc<Mutex<AuthStore<T>>>,
+    pub(crate) collections: CollectionService,
+    pub(crate) client: Client,
+    pub(crate) base_url: String,
 }
 
 impl<T> PocketBase<T>
 where T: DeserializeOwned + Clone {
     /// Returns a reference to the base URL String that was given
     /// when initiating the [PocketBase] instance.
-    pub fn base_url(&self) -> &String { &self.base_url }
+    pub fn base_url(&self) -> &String { &self.inner.base_url }
 
     /// Returns a reference to the [CollectionService] instance.
-    pub fn collections(&self) -> &CollectionService { &self.collections }
+    pub fn collections(&self) -> &CollectionService { &self.inner.collections }
 
     /// Returns a clone of the AuthStore instance stored in the [PocketBase] struct.
-    pub fn auth_store(&self) -> AuthStore<T> { self.auth_store.lock().unwrap().clone() }
+    pub fn auth_store(&self) -> AuthStore<T> { self.inner.auth_store.lock().unwrap().clone() }
 
     /// Creates a new instance of [PocketBase].
     pub fn new(base_url: impl Into<String>) -> Result<Self, ApiError> {
         let client = Client::new();
         let url = base_url.into().strip_suffix("/").unwrap().to_owned();
         Ok(Self {
-            client: client.clone(),
-            base_url: url.clone(),
-            auth_store: Arc::new(Mutex::new(AuthStore::default())),
-            collections: CollectionService {
-                base_crud_path: "/api/collections",
-                base_url: url.clone(),
+            inner: Arc::new(PocketBaseRef {
                 client: client.clone(),
-            }
+                base_url: url.clone(),
+                auth_store: Arc::new(Mutex::new(AuthStore::default())),
+                collections: CollectionService {
+                    base_crud_path: "/api/collections",
+                    base_url: url.clone(),
+                    client: client.clone(),
+                }
+            })
         })
     }
 
@@ -48,10 +55,8 @@ where T: DeserializeOwned + Clone {
     /// In itself it doesn't check if the collection exists.
     pub fn collection(&self, name_or_id: impl Into<String>) -> RecordService<T> {
         RecordService {
-            client: self.client.clone(),
-            base_url: self.base_url.clone(),
             collection_id_or_name: name_or_id.into(),
-            auth_store: self.auth_store.clone(),
+            pb: self.inner.clone(),
         }
     }
 }

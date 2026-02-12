@@ -1,9 +1,9 @@
 use reqwest::Client;
 use crate::error::ApiError;
+use crate::pocketbase::PocketBaseRef;
 
 /// Handles requests meant to concern the collections themselves,
 /// rather than the records they contain.
-#[derive(Clone)]
 pub struct CollectionService {
     pub(crate) base_crud_path: &'static str,
     pub(crate) client: Client,
