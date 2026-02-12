@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use pbrsdk_macros::base_system_fields;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::ApiError;
+use crate::error::ApiError;
 
 /// If you don't want to bother changing the default 'users' collection of PocketBase,
 /// then use this struct that already contains all the columns
@@ -58,9 +58,13 @@ where T: DeserializeOwned + Clone {
     }
 }
 
+/// The server's response to authentication.
 #[derive(Debug, Deserialize)]
 pub struct AuthResponse<T> {
+    /// A user is a record, its record is cloned and saved in the [AuthStore].
     pub record: T,
+    /// The token is used as the Authorization header for all requests.
+    /// It is also saved and cloned in the [AuthStore].
     pub token: String,
 }
 
@@ -121,6 +125,15 @@ where T: DeserializeOwned + Clone {
             return payload.token_type == "auth" && (self.collection_name.as_ref().unwrap() == "_superusers" || payload.collection_id == "pbc_3142635823");
         }
         false
+    }
+
+    /// Clears all user-related information.
+    /// Use this if you want the user to log out.
+    pub fn clear(&mut self) {
+        self.token = None;
+        self.record = None;
+        self.collection_id = None;
+        self.collection_name = None;
     }
 }
 
