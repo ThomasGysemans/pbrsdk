@@ -44,6 +44,8 @@ where T: DeserializeOwned + Clone {
     pub collection_name: Option<String>,
     /// The ID of the collection used for authentication.
     pub collection_id: Option<String>,
+    /// The ID of the user record.
+    pub record_id: Option<String>,
 }
 
 impl<T> Default for AuthStore<T>
@@ -54,6 +56,7 @@ where T: DeserializeOwned + Clone {
             record: None,
             collection_id: None,
             collection_name: None,
+            record_id: None,
         }
     }
 }
@@ -71,6 +74,7 @@ pub struct AuthResponse<T> {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DefaultAuthResponseRecord {
+    pub id: String,
     pub collection_id: String,
     pub collection_name: String,
 }
@@ -107,6 +111,10 @@ where T: DeserializeOwned + Clone {
         self.collection_id = Some(collection_id);
     }
 
+    pub(crate) fn set_record_id(&mut self, record_id: String) {
+        self.record_id = Some(record_id);
+    }
+
     pub(crate) fn is_some(&self) -> bool {
         self.token.is_some() && self.record.is_some() && self.collection_id.is_some() && self.collection_name.is_some()
     }
@@ -134,6 +142,7 @@ where T: DeserializeOwned + Clone {
         self.record = None;
         self.collection_id = None;
         self.collection_name = None;
+        self.record_id = None;
     }
 }
 

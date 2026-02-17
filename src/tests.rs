@@ -1,6 +1,5 @@
 use serde::*;
 use once_cell::sync::Lazy;
-use serial_test::serial;
 
 #[derive(Deserialize, Debug)]
 #[allow(unused_variables, dead_code)]
@@ -8,7 +7,7 @@ struct ExistingCollection {
     fields: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused_variables, dead_code)]
 struct UsersRecord {
@@ -21,6 +20,11 @@ struct UsersRecord {
     password_confirm: String,
     email_visibility: bool,
     verified: bool,
+}
+
+#[derive(Serialize, Debug)]
+struct UsersRecordPayload {
+    name: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -81,6 +85,7 @@ static DEMO: Lazy<TestData> = Lazy::new(|| {
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
     use super::*;
     use crate::*;
 
@@ -262,12 +267,14 @@ mod tests {
         assert!(auth_store.record.is_some());
         assert!(auth_store.collection_id.is_some());
         assert!(auth_store.collection_name.is_some());
+        assert!(auth_store.record_id.is_some());
         assert_eq!(auth_store.collection_name.as_ref().unwrap(), "users");
         assert_eq!(auth_store.collection_name.as_ref().unwrap().to_string(), res.record.collection_name);
         assert_eq!(auth_store.collection_id.as_ref().unwrap().to_string(), res.record.collection_id);
         assert_eq!(auth_store.token.as_ref().unwrap().to_string(), res.token);
         assert_eq!(auth_store.record.as_ref().unwrap().id, res.record.id);
         assert_eq!(auth_store.record.as_ref().unwrap().id, demo_user.id);
+        assert_eq!(auth_store.record.as_ref().unwrap().id, auth_store.record_id.as_ref().unwrap().to_string());
         assert_eq!(auth_store.record.as_ref().unwrap().name.as_ref().unwrap().to_string(), res.record.name.unwrap());
         assert_eq!(auth_store.record.as_ref().unwrap().name.as_ref().unwrap().to_string(), demo_user.name);
         assert!(auth_store.is_some());
@@ -286,11 +293,13 @@ mod tests {
         assert!(auth_store.record.is_some());
         assert!(auth_store.collection_id.is_some());
         assert!(auth_store.collection_name.is_some());
+        assert!(auth_store.record_id.is_some());
         assert_eq!(auth_store.collection_name.as_ref().unwrap(), "_superusers");
         assert_eq!(auth_store.collection_name.as_ref().unwrap().to_string(), res.record.collection_name);
         assert_eq!(auth_store.collection_id.as_ref().unwrap().to_string(), res.record.collection_id);
         assert_eq!(auth_store.token.as_ref().unwrap().to_string(), res.token);
         assert_eq!(auth_store.record.as_ref().unwrap().id, res.record.id);
+        assert_eq!(auth_store.record.as_ref().unwrap().id, auth_store.record_id.as_ref().unwrap().to_string());
         assert!(res.record.name.is_none());
         assert!(auth_store.record.as_ref().unwrap().name.is_none());
         assert!(auth_store.is_some());
@@ -345,5 +354,25 @@ mod tests {
         let fetched_again = pb.collection("articles").get_one::<ArticleRecord>(demo.id.clone(), None).await.unwrap();
         assert_eq!(fetched_again.id, demo.id);
         assert_eq!(fetched_again.name, demo.name);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_of_current_user() {
+        let pb = PocketBase::default("http://localhost:8091/").unwrap();
+        let demo_user = DEMO.data.users[0].clone();
+        let _ = pb.collection("users").auth_with_password(demo_user.email, demo_user.password).await;
+        assert!(pb.auth_store().token.is_some());
+        assert_eq!(pb.auth_store().record_id.unwrap(), demo_user.id);
+        assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), demo_user.name);
+        let updated_user_record: DefaultAuthRecord = pb.collection("users").update(demo_user.id.clone(), UsersRecordPayload { name: "John Doe".to_string() }, None).await.expect("Could not update user record.");
+        assert_eq!(pb.auth_store().record_id.unwrap(), demo_user.id);
+        assert_eq!(updated_user_record.name.as_ref().unwrap().to_string(), "John Doe".to_string());
+        assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), updated_user_record.name.as_ref().unwrap().to_string());
+        assert_ne!(pb.auth_store().record.unwrap().name.unwrap(), demo_user.name.clone());
+        let recover_update: DefaultAuthRecord = pb.collection("users").update(demo_user.id.clone(), UsersRecordPayload { name: demo_user.name.clone() }, None).await.expect("Could not update back user record.");
+        assert_eq!(pb.auth_store().record_id.unwrap(), demo_user.id);
+        assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), demo_user.name.clone());
+        assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), recover_update.name.unwrap());
     }
 }

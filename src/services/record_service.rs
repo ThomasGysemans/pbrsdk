@@ -39,6 +39,11 @@ where T: DeserializeOwned + Clone {
     pub(crate) pb: Arc<PocketBaseRef<T>>,
 }
 
+#[derive(Deserialize, Debug)]
+struct RecordIdOnly {
+    id: String,
+}
+
 impl<T> RecordService<T>
 where T: DeserializeOwned + Clone {
     async fn handle_response_body<E: DeserializeOwned>(&self, body: &String) -> Result<E, ApiError> {
@@ -171,6 +176,26 @@ where T: DeserializeOwned + Clone {
             .json(&body)
             .send().await?
             .text().await?;
+        // If the update concerns the current user,
+        // then the response is stored as the record of the auth store.
+        let mut auth_store = self.pb.auth_store.lock().unwrap();
+        if auth_store.is_some() {
+            let auth_coll_id = auth_store.collection_id.clone().unwrap();
+            let auth_coll_name = auth_store.collection_name.clone().unwrap();
+            if self.collection_id_or_name == auth_coll_id || self.collection_id_or_name == auth_coll_name {
+                let record = serde_json::from_str::<RecordIdOnly>(&body);
+                if let Ok(record) = record {
+                    let auth_rec_id = auth_store.record_id.clone().unwrap();
+                    if record.id == auth_rec_id {
+                        auth_store.set_record_id(record.id.clone());
+                        let auth_record = serde_json::from_str::<T>(&body);
+                        if let Ok(auth_record) = auth_record {
+                            auth_store.set_record(auth_record);
+                        }
+                    }
+                }
+            }
+        }
         self.handle_response_body(&body).await
     }
 
@@ -189,6 +214,7 @@ where T: DeserializeOwned + Clone {
             let mut lock = self.pb.auth_store.lock().unwrap();
             lock.set_token(token);
             lock.set_collection(response.record.collection_name.clone(), response.record.collection_id.clone());
+            lock.set_record_id(response.record.id.clone());
             if let Ok(actual_result) = &result {
                 lock.set_record(actual_result.record.clone());
             }
