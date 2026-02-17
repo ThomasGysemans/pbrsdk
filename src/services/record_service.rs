@@ -200,6 +200,8 @@ where T: DeserializeOwned + Clone {
     }
 
     /// Authenticates using an identity field (usually an email address) and a password.
+    ///
+    /// Stores a duplicate of the user's record into the `AuthStore` instance of pocketbase.
     pub async fn auth_with_password(&mut self, identity: impl Into<String>, password: impl Into<String>) -> Result<AuthResponse<T>, ApiError> {
         let url = format!("{}/api/collections/{}/auth-with-password", self.pb.base_url, self.collection_id_or_name);
         let payload = AuthRequestPayload {
@@ -212,12 +214,16 @@ where T: DeserializeOwned + Clone {
         if let Ok(response) = &tmp {
             let token = response.token.clone();
             let mut lock = self.pb.auth_store.lock().unwrap();
-            lock.set_token(token);
-            lock.set_collection(response.record.collection_name.clone(), response.record.collection_id.clone());
-            lock.set_record_id(response.record.id.clone());
             if let Ok(actual_result) = &result {
+                lock.set_token(token);
+                lock.set_collection(response.record.collection_name.clone(), response.record.collection_id.clone());
+                lock.set_record_id(response.record.id.clone());
                 lock.set_record(actual_result.record.clone());
+            } else {
+                return Err(result.err().unwrap());
             }
+        } else {
+            return Err(result.err().unwrap());
         }
         result
     }
