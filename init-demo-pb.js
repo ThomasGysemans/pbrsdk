@@ -29,10 +29,68 @@ async function main() {
 try {
     console.log("Working...");
     await main();
+    const cookie = pb.authStore.exportToCookie();
+    const parsed = cookieParse(cookie);
+    console.log(cookie);
+    console.log(parsed);
+    pb.authStore.clear();
     console.log("Done.");
 } catch (e) {
     console.error("Failed to login as super user :");
     console.error(e);
 }
 
-pb.authStore.clear();
+
+function cookieParse(str) {
+    const result = {};
+
+    if (typeof str !== "string") {
+        return result;
+    }
+
+    let index = 0;
+    while (index < str.length) {
+        const eqIdx = str.indexOf("=", index);
+
+        // no more cookie pairs
+        if (eqIdx === -1) {
+            break;
+        }
+
+        let endIdx = str.indexOf(";", index);
+
+        if (endIdx === -1) {
+            endIdx = str.length;
+        } else if (endIdx < eqIdx) {
+            // backtrack on prior semicolon
+            index = str.lastIndexOf(";", eqIdx - 1) + 1;
+            continue;
+        }
+
+        const key = str.slice(index, eqIdx).trim();
+
+        // only assign once
+        if (undefined === result[key]) {
+            let val = str.slice(eqIdx + 1, endIdx).trim();
+
+            // quoted values
+            if (val.charCodeAt(0) === 0x22) {
+                val = val.slice(1, -1);
+            }
+
+            try {
+                result[key] = defaultDecode(val);
+            } catch (_) {
+                result[key] = val; // no decoding
+            }
+        }
+
+        index = endIdx + 1;
+    }
+
+    return result;
+}
+
+function defaultDecode(val) {
+    return val.indexOf("%") !== -1 ? decodeURIComponent(val) : val;
+}

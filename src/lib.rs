@@ -32,6 +32,7 @@ mod auth;
 mod tests;
 mod common;
 mod services;
+mod cookies;
 
 pub use pbrsdk_macros::base_system_fields;
 pub use pocketbase::*;

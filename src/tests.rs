@@ -88,6 +88,7 @@ mod tests {
     use serial_test::serial;
     use super::*;
     use crate::*;
+    use crate::cookies::cookie_parse;
 
     #[test]
     fn test_demo_data() {
@@ -374,5 +375,12 @@ mod tests {
         assert_eq!(pb.auth_store().record_id.unwrap(), demo_user.id);
         assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), demo_user.name.clone());
         assert_eq!(pb.auth_store().record.unwrap().name.unwrap(), recover_update.name.unwrap());
+    }
+
+    #[test]
+    fn test_cookie_parse() {
+        let cookie = "pb_auth=%7B%22token%22%3A%22eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyIsImV4cCI6MTc3MTUyOTIxNSwiaWQiOiJhNjl1bHdrMm15cHNqem8iLCJyZWZyZXNoYWJsZSI6dHJ1ZSwidHlwZSI6ImF1dGgifQ.azMQuCT026JPL5Lc6NobhdadtCVFRMc7pnvia7h2dG0%22%2C%22record%22%3A%7B%22collectionId%22%3A%22pbc_3142635823%22%2C%22collectionName%22%3A%22_superusers%22%2C%22created%22%3A%222026-01-28%2010%3A02%3A31.589Z%22%2C%22email%22%3A%22thomas%40gysemans.dev%22%2C%22emailVisibility%22%3Afalse%2C%22id%22%3A%22a69ulwk2mypsjzo%22%2C%22updated%22%3A%222026-02-18%2019%3A19%3A11.410Z%22%2C%22verified%22%3Atrue%7D%7D; Path=/; Expires=Thu, 19 Feb 2026 19:26:55 GMT; HttpOnly; Secure; SameSite=Strict";
+        let parsed = cookie_parse(&cookie.to_string()).unwrap();
+        println!("{:#?}", parsed);
     }
 }
